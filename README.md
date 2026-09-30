@@ -7,6 +7,15 @@ puts in Finder's context menu — Open in New Tab, Get Info, Rename, Compress, D
 Alias, Quick Look, Copy, Share… — which no setting and no Finder extension can remove. You can
 also reorder them and add your own items.
 
+## Install
+
+```bash
+brew install --cask piro0919/tap/ocomenu
+```
+
+Or download the DMG from [Releases](https://github.com/piro0919/ocomenu/releases/latest).
+Apple Silicon, macOS 14 or later.
+
 ## Why this is different
 
 Every other context-menu tool for Finder is built on Finder Sync extensions. Those can only
