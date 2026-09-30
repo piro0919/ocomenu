@@ -1,5 +1,9 @@
 import AppKit
 import ApplicationServices
+import os
+
+/// 調べるときは `log stream --predicate 'subsystem == "io.kkweb.ocomenu"'` で見る。クリックの位置や他のアプリのことは残さない
+let log = Logger(subsystem: "io.kkweb.ocomenu", category: "app")
 
 // Finder とのやり取り。
 //
@@ -131,7 +135,10 @@ enum FinderBridge {
     /// 初回は Finder との接続を張るので 100ms ほどかかる。起動時に warmUp で済ませておく
     static func selection() -> [String] {
         var error: NSDictionary?
-        guard let result = selectionScript?.executeAndReturnError(&error), error == nil else { return [] }
+        guard let result = selectionScript?.executeAndReturnError(&error), error == nil else {
+            log.error("selection failed: \(String(describing: error), privacy: .public)")
+            return []
+        }
         return (result.stringValue ?? "")
             .split(separator: "\n")
             .map { $0.count > 1 && $0.hasSuffix("/") ? String($0.dropLast()) : String($0) }

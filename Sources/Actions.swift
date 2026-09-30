@@ -69,6 +69,7 @@ enum Actions {
     }
 
     private static func report(_ action: CustomAction, _ error: any Error) {
+        log.error("custom item failed: \(error.localizedDescription, privacy: .public)")
         let alert = NSAlert()
         alert.messageText = L.actionFailed(action.title)
         alert.informativeText = error.localizedDescription

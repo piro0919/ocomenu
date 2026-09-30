@@ -38,7 +38,9 @@ final class ContextMenu: NSObject {
 
         // AppKit の座標は左下が原点。一番目の画面の高さで裏返す
         let height = NSScreen.screens.first?.frame.height ?? 0
+        Interceptor.shared.menuIsOpen = true
         menu.popUp(positioning: nil, at: NSPoint(x: location.x, y: height - location.y), in: nil)
+        Interceptor.shared.menuIsOpen = false
     }
 
     private func makeItem(title: String, symbol: String, entry: MenuEntry) -> NSMenuItem {
@@ -58,10 +60,15 @@ final class ContextMenu: NSObject {
             FinderBridge.bringToFront(window)
             // 前面化が済むのを待ってから押す。済む前だと項目が無効のまま
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                if !FinderBridge.press(item) { NSSound.beep() }
+                if !FinderBridge.press(item) {
+                    log.error("could not press \(item.rawValue, privacy: .public)")
+                    NSSound.beep()
+                }
             }
         case .custom(let action):
-            Actions.run(action, on: FinderBridge.selection())
+            let paths = FinderBridge.selection()
+            log.info("custom item chosen, \(paths.count) selected")
+            Actions.run(action, on: paths)
         case .separator:
             break
         }

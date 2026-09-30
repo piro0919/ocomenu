@@ -19,12 +19,15 @@ final class Interceptor {
 
     var isRunning: Bool { tap != nil }
 
+    /// 自前のメニューを開いている間は真。キー入力をこちらへ回す
+    var menuIsOpen = false
+
     /// タップを張る。アクセシビリティの許可が無ければ張れず false
     @discardableResult
     func start() -> Bool {
         if tap != nil { return true }
         var mask: CGEventMask = 0
-        for type: CGEventType in [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp] {
+        for type: CGEventType in [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .keyDown, .keyUp] {
             mask |= CGEventMask(1) << type.rawValue
         }
         guard
@@ -55,6 +58,13 @@ final class Interceptor {
             // 呼び戻しが遅れると OS に切られる。張り直す
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return pass
+
+        case .keyDown, .keyUp:
+            // Ocomenu は前面のアプリではないので、キー入力は前面の Finder へ行き、
+            // 自前のメニューは Esc でも閉じない。開いている間だけ自分に送り直す
+            guard menuIsOpen else { return pass }
+            event.postToPid(getpid())
+            return false
 
         case .leftMouseUp, .rightMouseUp:
             guard let pending = converted else { return pass }
