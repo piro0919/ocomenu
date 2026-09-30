@@ -82,6 +82,14 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIconFile</key><string>Ocomenu</string>
   <key>CFBundleIdentifier</key><string>io.kkweb.ocomenu</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <!-- 対応する言語の申告。文言は自前の表で切り替えているので .lproj は無いが、これが無いと
+       フォルダを選ぶ画面のような macOS 側の部品が英語のまま出る（2026-09-30 に本人が気付いた） -->
+  <key>CFBundleDevelopmentRegion</key><string>en</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>en</string>
+    <string>ja</string>
+  </array>
   <key>CFBundleShortVersionString</key><string>${VERSION}</string>
   <key>CFBundleVersion</key><string>${VERSION}</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
