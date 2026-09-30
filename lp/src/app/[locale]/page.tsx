@@ -246,7 +246,7 @@ export default async function Page({ params }: PageProps) {
                   <Image
                     alt=""
                     className="w-full max-w-3xl rounded-xl shadow-[0_18px_40px_rgb(31_42_90/0.25)]"
-                    height={1064}
+                    height={1108}
                     src={locale === "ja" ? "/settings-ja.png" : "/settings-en.png"}
                     width={1584}
                   />
