@@ -49,6 +49,19 @@ enum Settings {
         }
     }
 
+    // MARK: - 元のメニューを使うフォルダ
+
+    private static let excludedFoldersKey = "excludedFolders"
+
+    /// この中を右クリックしたときは横取りしない。パスは実体のもの（シンボリックリンクを解いたもの）で持つ
+    static var excludedFolders: [String] {
+        get { UserDefaults.standard.stringArray(forKey: excludedFoldersKey) ?? [] }
+        set {
+            UserDefaults.standard.set(newValue, forKey: excludedFoldersKey)
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     // MARK: - メニューの並び
 
     /// 保存が無いか読めなければ既定の並び。読むたびに normalized を通し、後から増えた標準の項目を足す。

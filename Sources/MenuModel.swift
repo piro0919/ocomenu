@@ -224,3 +224,13 @@ enum ClickDecision: Equatable, Sendable {
         return selected && frontWindow ? .swallow : .select
     }
 }
+
+/// 元のメニューを使うフォルダの判定。フォルダそのものか、その下のものが当たる
+enum FolderExclusion {
+    static func contains(_ path: String, in folders: [String]) -> Bool {
+        folders.contains { folder in
+            let base = folder.count > 1 && folder.hasSuffix("/") ? String(folder.dropLast()) : folder
+            return path == base || path.hasPrefix(base == "/" ? "/" : base + "/")
+        }
+    }
+}

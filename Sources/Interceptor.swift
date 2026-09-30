@@ -99,7 +99,9 @@ final class Interceptor {
                 return pass
             }
             let hit = FinderBridge.inspect(element)
-            let bypass = event.flags.contains(.maskCommand)
+            // 元のメニューを使うフォルダの中なら、⌘ を押したのと同じく素通しする
+            let excluded = hit?.path.map { FolderExclusion.contains($0, in: Settings.excludedFolders) } ?? false
+            let bypass = event.flags.contains(.maskCommand) || excluded
             let decision = ClickDecision.decide(
                 onItem: hit?.path != nil, selected: hit?.selected ?? false,
                 frontWindow: FinderBridge.isFrontWindow(hit?.window), bypass: bypass)

@@ -439,6 +439,22 @@ private struct CustomActionEditor: View {
 private struct GeneralView: View {
     @State private var launchAtLogin = Settings.launchesAtLogin
     @State private var showsIcon = Settings.showsMenuBarIcon
+    @State private var folders = Settings.excludedFolders
+    @State private var selectedFolder: String?
+
+    private func addFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = true
+        // Gocci のドライブは隠しフォルダの下にあるが、サイドバーの「Gocci」から選べる
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            // Finder が教えるパスは実体のもの。シンボリックリンクを解いて揃える
+            let path = url.resolvingSymlinksInPath().path
+            if !folders.contains(path) { folders.append(path) }
+        }
+    }
     @State private var language = Settings.language
     @State private var message: String?
 
@@ -457,6 +473,56 @@ private struct GeneralView: View {
                 Text(L.menuBarIconHint)
             }
             .onChange(of: showsIcon) { _, new in Settings.showsMenuBarIcon = new }
+            Section {
+                if folders.isEmpty {
+                    Text(L.noExcludedFolders).foregroundStyle(.secondary)
+                }
+                ForEach(folders, id: \.self) { folder in
+                    HStack(spacing: 8) {
+                        Image(nsImage: NSWorkspace.shared.icon(forFile: folder))
+                            .resizable()
+                            .frame(width: 18, height: 18)
+                        Text((folder as NSString).lastPathComponent)
+                        Text(folder)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .tag(folder)
+                    .contentShape(Rectangle())
+                    .onTapGesture { selectedFolder = folder }
+                    .listRowBackground(selectedFolder == folder ? Color.accentColor.opacity(0.25) : nil)
+                }
+                // システム設定の Spotlight の「検索のプライバシー」と同じく、一覧の下に「+」「−」
+                HStack(spacing: 0) {
+                    Button {
+                        addFolder()
+                    } label: {
+                        Image(systemName: "plus").frame(width: 24, height: 20)
+                    }
+                    .help(L.addExcludedFolder)
+                    Divider().frame(height: 16)
+                    Button {
+                        if let selectedFolder {
+                            folders.removeAll { $0 == selectedFolder }
+                            self.selectedFolder = nil
+                        }
+                    } label: {
+                        Image(systemName: "minus").frame(width: 24, height: 20)
+                    }
+                    .help(L.delete)
+                    .disabled(selectedFolder == nil)
+                    Spacer()
+                }
+                .buttonStyle(.borderless)
+            } header: {
+                Text(L.excludedFolders)
+            } footer: {
+                Text(L.excludedFoldersHint).font(.caption).foregroundStyle(.secondary)
+            }
+            .onChange(of: folders) { _, new in Settings.excludedFolders = new }
+
             Picker(L.language, selection: $language) {
                 ForEach(Language.allCases, id: \.self) { Text($0.label).tag($0) }
             }

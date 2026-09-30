@@ -118,6 +118,23 @@ enum SelfTest {
             check(UniqueName.make(for: "folder", exists: taken.contains) == "folder 2", "拡張子が無ければ末尾に足す")
         }
 
+        // 元のメニューを使うフォルダ
+        do {
+            let folders = ["/Volumes/HIKSEMI/.CloudStorage/Data/Gocci-Gocci", "/Users/me/Work/"]
+            check(
+                FolderExclusion.contains("/Volumes/HIKSEMI/.CloudStorage/Data/Gocci-Gocci", in: folders), "フォルダそのものが当たる"
+            )
+            check(
+                FolderExclusion.contains("/Volumes/HIKSEMI/.CloudStorage/Data/Gocci-Gocci/Musics/a.mp3", in: folders),
+                "その下のものが当たる")
+            check(
+                !FolderExclusion.contains("/Volumes/HIKSEMI/.CloudStorage/Data/Gocci-Gocci2/a", in: folders),
+                "名前の頭が同じだけの別フォルダは当たらない")
+            check(FolderExclusion.contains("/Users/me/Work/x", in: folders), "末尾の / があっても当たる")
+            check(!FolderExclusion.contains("/Users/me/Workshop", in: folders), "末尾の / があっても別フォルダは当たらない")
+            check(!FolderExclusion.contains("/Users/me/Work", in: []), "一覧が空なら当たらない")
+        }
+
         // 識別子が被っていないこと
         do {
             let all = BuiltinItem.allCases.flatMap(\.identifiers)
