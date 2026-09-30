@@ -67,3 +67,9 @@ Releases in one pass.
   Gocci, Hawky and Wacchi. Lose it and already-installed copies can never be updated again**
 - `generate_appcast` stops when it sees two archives of the same version. Keep the zip and the
   DMG in separate directories
+- On 2026-09-30 the first release failed at the very end: `gh release create` with assets got
+  HTTP 500 three times, each time leaving an empty draft behind (all systems were reported
+  operational). Creating a bare draft worked. What got v0.1.0 out: delete the empty drafts
+  by id, create one draft, upload each file to `uploads.github.com/.../releases/<id>/assets`,
+  then `PATCH` the release with `draft=false`. Deleted drafts can keep showing up in the list
+  for a while, so check by id rather than by count
