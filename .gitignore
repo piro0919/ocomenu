@@ -1,0 +1,6 @@
+build/
+Ocomenu.app/
+dist/
+.DS_Store
+Vendor/
+
