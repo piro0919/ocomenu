@@ -2,6 +2,8 @@
 
 **Replace Finder's right-click menu with one you design — hide what you never use, add what you need.**
 
+**Website:** [ocomenu.kkweb.io](https://ocomenu.kkweb.io)
+
 Ocomenu (*oh-koh-menu*, from **O**riginal **CO**ntext **MENU**) lets you remove the items Apple
 puts in Finder's context menu — Open in New Tab, Get Info, Rename, Compress, Duplicate, Make
 Alias, Quick Look, Copy, Share… — which no setting and no Finder extension can remove. You can
