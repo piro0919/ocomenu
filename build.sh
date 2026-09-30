@@ -53,7 +53,7 @@ swiftc \
   Sources/Localization.swift Sources/MenuModel.swift Sources/Settings.swift \
   Sources/FinderBridge.swift Sources/Interceptor.swift Sources/ContextMenu.swift \
   Sources/Actions.swift Sources/SelfTest.swift Sources/Updater.swift \
-  Sources/SettingsWindow.swift Sources/main.swift
+  Sources/StatusIcon.swift Sources/SettingsWindow.swift Sources/main.swift
 
 # アプリ本体のアイコン。元絵があれば .icns を組み立てる。
 # 無くてもビルドは通る（Finder では白紙のままになる）

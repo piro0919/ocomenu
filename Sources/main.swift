@@ -32,8 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(
-            systemSymbolName: "contextualmenu.and.cursorarrow", accessibilityDescription: "Ocomenu")
+        statusItem.button?.image = StatusIcon.image()
         statusItem.menu = menu
         menu.delegate = self
         buildMenu()
