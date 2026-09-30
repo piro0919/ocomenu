@@ -10,20 +10,18 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController {
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
-            styleMask: [.titled, .closable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false)
         window.title = L.settingsTitle
         window.isReleasedWhenClosed = false
-        window.contentMinSize = NSSize(width: 700, height: 520)
         let hosting = NSHostingController(rootView: SettingsView())
-        // 既定では中身の理想の大きさに窓が合わせられ、一覧の行の数だけ縦に伸びる。
-        // 最小の大きさを中身から取らせても、一覧の全行の高さが最小として返ってきて同じだった。
-        // 大きさは窓の側で決める
-        hosting.sizingOptions = []
+        // 窓の大きさは中身に合わせ、変えられないようにする。手本の Finder の画面も同じ。
+        // 最初はチェック付きの一覧で組んでいて、一覧の全行の高さまで窓が伸びたので窓の側で決めていた。
+        // 一覧をやめたので中身に任せられる。窓の側で決めると、中身の下に空白の帯が残った
+        hosting.sizingOptions = [.preferredContentSize]
         window.contentViewController = hosting
-        window.setContentSize(NSSize(width: 820, height: 600))
         self.init(window: window)
     }
 
@@ -46,7 +44,8 @@ private struct SettingsView: View {
             GeneralView()
                 .tabItem { Text(L.generalTab) }
         }
-        .padding(16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
     }
 }
 
@@ -81,7 +80,9 @@ private struct MenuLayoutView: View {
                 palette
                 preview
             }
-            .padding(24)
+            .padding(.horizontal, 24)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
 
             Divider()
             HStack {
@@ -124,9 +125,8 @@ private struct MenuLayoutView: View {
                 }
                 .buttonStyle(.plain)
             }
-            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(width: 420, alignment: .topLeading)
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
@@ -195,10 +195,10 @@ private struct MenuLayoutView: View {
                             }
                         }
                 }
-                // 末尾へ入れるための受け皿
+                // 末尾へ入れるための受け皿。空行に見えないよう低くする
                 Rectangle()
                     .fill(.clear)
-                    .frame(height: 28)
+                    .frame(height: 10)
                     .overlay(alignment: .top) {
                         if dropAtEnd { InsertionLine() }
                     }
@@ -216,6 +216,8 @@ private struct MenuLayoutView: View {
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
             .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
         }
+        // 左の部品の一覧は、ドロップ先の枠のぶん内側に余白がある。見出しの高さを揃える
+        .padding(.top, 12)
     }
 
     // MARK: 出し入れ
