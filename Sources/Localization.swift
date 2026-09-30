@@ -46,15 +46,13 @@ enum L {
     static var settingsTitle: String { t("Ocomenu の設定", "Ocomenu Settings") }
     static var menuTab: String { t("メニュー", "Menu") }
     static var generalTab: String { t("一般", "General") }
-    static var menuHint: String {
-        t(
-            "チェックを外した項目は右クリックに出ません。ドラッグで並べ替えられます。⌘ を押しながら右クリックすると Finder の元のメニューが出ます。",
-            "Unchecked items are hidden from the right-click menu. Drag to reorder. Hold ⌘ while right-clicking to get Finder's original menu."
-        )
+    static var paletteHint: String {
+        t("よく使う項目を右クリックメニューにドラッグしてください…", "Drag your favorite items into the right-click menu…")
     }
+    static var previewTitle: String { t("右クリックメニュー", "Right-Click Menu") }
     static var separator: String { t("区切り線", "Separator") }
-    static var addAction: String { t("項目を追加…", "Add Item…") }
-    static var addSeparator: String { t("区切り線を追加", "Add Separator") }
+    static var newItem: String { t("新しい項目…", "New Item…") }
+    static var done: String { t("完了", "Done") }
     static var remove: String { t("削除", "Remove") }
     static var edit: String { t("編集…", "Edit…") }
     static var resetToDefaults: String { t("初期状態に戻す", "Reset to Defaults") }

@@ -42,6 +42,16 @@ enum SelfTest {
             check(defaults.first?.content == .builtin(.open), "先頭は「開く」（Finder と同じ）")
         }
 
+        // 初期状態に戻す
+        do {
+            let custom = MenuEntry(.custom(CustomAction(kind: .script, title: "T", value: "true")))
+            let reset = MenuLayout.reset([MenuEntry(.builtin(.copy)), custom])
+            check(reset.contains { $0.id == custom.id && $0.hidden }, "初期状態に戻しても、作った項目は隠して残す")
+            check(
+                MenuLayout.visible(reset).map(\.content) == MenuLayout.visible(MenuLayout.defaults).map(\.content),
+                "初期状態に戻すと、見える並びは既定と同じ")
+        }
+
         // 保存してある並びを直す
         do {
             let saved = [MenuEntry(.builtin(.getInfo)), MenuEntry(.builtin(.getInfo)), MenuEntry(.separator)]

@@ -10,20 +10,20 @@ import SwiftUI
 final class SettingsWindowController: NSWindowController {
     convenience init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 820, height: 600),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false)
         window.title = L.settingsTitle
         window.isReleasedWhenClosed = false
-        window.contentMinSize = NSSize(width: 420, height: 420)
+        window.contentMinSize = NSSize(width: 700, height: 520)
         let hosting = NSHostingController(rootView: SettingsView())
         // 既定では中身の理想の大きさに窓が合わせられ、一覧の行の数だけ縦に伸びる。
         // 最小の大きさを中身から取らせても、一覧の全行の高さが最小として返ってきて同じだった。
         // 大きさは窓の側で決める
         hosting.sizingOptions = []
         window.contentViewController = hosting
-        window.setContentSize(NSSize(width: 460, height: 560))
+        window.setContentSize(NSSize(width: 820, height: 600))
         self.init(window: window)
     }
 
@@ -32,6 +32,9 @@ final class SettingsWindowController: NSWindowController {
         NSApp.activate()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        // 前面化は頼むだけで、断られると窓がほかのアプリの後ろに開く（2026-09-30 に踏んだ）。
+        // 窓だけは必ず一番手前に出す。押せばそこで前面になる
+        window?.orderFrontRegardless()
     }
 }
 
@@ -49,121 +52,284 @@ private struct SettingsView: View {
 
 // MARK: - メニューの並び
 
+// Finder の「ツールバーをカスタマイズ」を手本にする。左に部品、右に実物そっくりのメニュー。
+// 部品をメニューへドラッグすると入り、メニューの行を部品の方へドラッグすると抜ける。
+
+/// ドラッグで運ぶ中身。既にある行か、新しい区切り線
+private enum DragToken {
+    static func entry(_ id: UUID) -> String { "entry:\(id.uuidString)" }
+    static let separator = "separator"
+
+    static func entryID(_ token: String) -> UUID? {
+        guard token.hasPrefix("entry:") else { return nil }
+        return UUID(uuidString: String(token.dropFirst("entry:".count)))
+    }
+}
+
 private struct MenuLayoutView: View {
     @State private var entries = Settings.layout
-    @State private var selection: UUID?
     /// 編集の窓に渡す中身。新しく足すときは id が一覧に無い
     @State private var editing: MenuEntry?
+    /// ドラッグ中に、この行の上へ入れようとしている
+    @State private var dropBefore: UUID?
+    @State private var dropAtEnd = false
+    @State private var paletteTargeted = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L.menuHint)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
-            List(selection: $selection) {
-                ForEach($entries) { $entry in
-                    EntryRow(entry: $entry)
-                        .tag(entry.id)
-                        .contextMenu {
-                            if case .custom = entry.content {
-                                Button(L.edit) { editing = entry }
-                            }
-                            if isRemovable(entry) {
-                                Button(L.remove) { remove(entry.id) }
-                            }
-                        }
-                }
-                .onMove { from, to in
-                    entries.move(fromOffsets: from, toOffset: to)
-                }
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 28) {
+                palette
+                preview
             }
-            .onChange(of: entries) { _, new in Settings.layout = new }
+            .padding(24)
 
+            Divider()
             HStack {
-                Button(L.addAction) {
-                    editing = MenuEntry(.custom(CustomAction(kind: .script, title: "", value: "")))
-                }
-                Button(L.addSeparator) {
-                    insert(MenuEntry(.separator))
-                }
+                Button(L.resetToDefaults) { entries = MenuLayout.reset(entries) }
                 Spacer()
-                Button(L.remove) {
-                    if let selection { remove(selection) }
-                }
-                .disabled(!(selectedEntry.map(isRemovable) ?? false))
-                Button(L.resetToDefaults) {
-                    entries = MenuLayout.defaults
-                }
+                Button(L.done) { NSApp.keyWindow?.performClose(nil) }
+                    .keyboardShortcut(.defaultAction)
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 14)
         }
+        .onChange(of: entries) { _, new in Settings.layout = new }
         .sheet(item: $editing) { entry in
             CustomActionEditor(entry: entry) { saved in
                 if let index = entries.firstIndex(where: { $0.id == saved.id }) {
                     entries[index] = saved
                 } else {
-                    insert(saved)
+                    entries.append(saved)
                 }
             }
         }
     }
 
-    private var selectedEntry: MenuEntry? {
-        entries.first { $0.id == selection }
-    }
+    // MARK: 部品の一覧
 
-    /// 標準の項目は消さずにチェックを外す。消したものを戻す場所が要るため
-    private func isRemovable(_ entry: MenuEntry) -> Bool {
-        if case .builtin = entry.content { return false }
-        return true
-    }
-
-    /// 選んでいる行の下に入れる。何も選んでいなければ末尾
-    private func insert(_ entry: MenuEntry) {
-        if let selection, let index = entries.firstIndex(where: { $0.id == selection }) {
-            entries.insert(entry, at: index + 1)
-        } else {
-            entries.append(entry)
+    private var palette: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(L.paletteHint)
+                .font(.system(size: 13, weight: .semibold))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 8)], spacing: 16) {
+                ForEach(paletteEntries) { entry in
+                    tile(for: entry)
+                }
+                Tile(title: L.separator, symbol: "minus", dimmed: false)
+                    .draggable(DragToken.separator)
+                Button {
+                    editing = MenuEntry(.custom(CustomAction(kind: .script, title: "", value: "")))
+                } label: {
+                    Tile(title: L.newItem, symbol: "plus", dimmed: false)
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer(minLength: 0)
         }
-        selection = entry.id
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(paletteTargeted ? Color.accentColor.opacity(0.08) : .clear)
+        )
+        // メニューの行をここへ落とすと抜ける
+        .dropDestination(for: String.self) { tokens, _ in
+            for token in tokens { takeOut(token) }
+            return true
+        } isTargeted: {
+            paletteTargeted = $0
+        }
     }
 
-    private func remove(_ id: UUID) {
-        entries.removeAll { $0.id == id && isRemovable($0) }
+    /// 部品の並びは固定する。メニューの並びに合わせて動くと、どこに何があるか分からなくなる。
+    /// 標準の項目を決まった順に、そのあと自分で作った項目を作った順に
+    private var paletteEntries: [MenuEntry] {
+        let builtins = BuiltinItem.allCases.compactMap { item in
+            entries.first { $0.content == .builtin(item) }
+        }
+        let customs = entries.filter {
+            if case .custom = $0.content { return true }
+            return false
+        }
+        return builtins + customs
+    }
+
+    @ViewBuilder
+    private func tile(for entry: MenuEntry) -> some View {
+        switch entry.content {
+        case .builtin(let item):
+            Tile(title: item.label, symbol: ContextMenu.symbol(item), dimmed: !entry.hidden)
+                .draggable(DragToken.entry(entry.id))
+        case .custom(let action):
+            Tile(title: action.title, symbol: ContextMenu.symbol(action.kind), dimmed: !entry.hidden)
+                .draggable(DragToken.entry(entry.id))
+                .contextMenu {
+                    Button(L.edit) { editing = entry }
+                    Button(L.remove, role: .destructive) { entries.removeAll { $0.id == entry.id } }
+                }
+        case .separator:
+            EmptyView()
+        }
+    }
+
+    // MARK: 実物そっくりのメニュー
+
+    private var preview: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L.previewTitle)
+                .font(.system(size: 13, weight: .semibold))
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(entries.filter { !$0.hidden }) { entry in
+                    PreviewRow(entry: entry, insertionAbove: dropBefore == entry.id)
+                        .draggable(DragToken.entry(entry.id)) {
+                            PreviewRow(entry: entry, insertionAbove: false).frame(width: 220)
+                        }
+                        .dropDestination(for: String.self) { tokens, _ in
+                            for token in tokens { putIn(token, before: entry.id) }
+                            return true
+                        } isTargeted: { targeted in
+                            if targeted {
+                                dropBefore = entry.id
+                            } else if dropBefore == entry.id {
+                                dropBefore = nil
+                            }
+                        }
+                }
+                // 末尾へ入れるための受け皿
+                Rectangle()
+                    .fill(.clear)
+                    .frame(height: 28)
+                    .overlay(alignment: .top) {
+                        if dropAtEnd { InsertionLine() }
+                    }
+                    .contentShape(Rectangle())
+                    .dropDestination(for: String.self) { tokens, _ in
+                        for token in tokens { putIn(token, before: nil) }
+                        return true
+                    } isTargeted: {
+                        dropAtEnd = $0
+                    }
+            }
+            .padding(5)
+            .frame(width: 240)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+            .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
+        }
+    }
+
+    // MARK: 出し入れ
+
+    /// メニューへ入れる。before が nil なら末尾
+    private func putIn(_ token: String, before target: UUID?) {
+        var moving: MenuEntry
+        if token == DragToken.separator {
+            moving = MenuEntry(.separator)
+        } else if let id = DragToken.entryID(token), let index = entries.firstIndex(where: { $0.id == id }) {
+            // 自分の上に落としたときは何もしない
+            if id == target { return }
+            moving = entries.remove(at: index)
+            moving.hidden = false
+        } else {
+            return
+        }
+        if let target, let index = entries.firstIndex(where: { $0.id == target }) {
+            entries.insert(moving, at: index)
+        } else {
+            entries.append(moving)
+        }
+    }
+
+    /// メニューから抜く。区切り線は消し、それ以外は隠して部品の一覧に戻す
+    private func takeOut(_ token: String) {
+        guard let id = DragToken.entryID(token), let index = entries.firstIndex(where: { $0.id == id }) else { return }
+        if entries[index].content == .separator {
+            entries.remove(at: index)
+        } else {
+            entries[index].hidden = true
+        }
     }
 }
 
-private struct EntryRow: View {
-    @Binding var entry: MenuEntry
+/// 部品の一覧のタイル。Finder のツールバーの部品と同じく、丸い地にアイコン、下に名前
+private struct Tile: View {
+    let title: String
+    let symbol: String
+    let dimmed: Bool
 
     var body: some View {
-        switch entry.content {
-        case .separator:
-            HStack {
-                Rectangle().fill(.separator).frame(height: 1)
-                Text(L.separator).font(.caption).foregroundStyle(.secondary)
-                Rectangle().fill(.separator).frame(height: 1)
-            }
-            .opacity(entry.hidden ? 0.4 : 1)
-        case .builtin(let item):
-            row(title: item.label, symbol: ContextMenu.symbol(item))
-        case .custom(let action):
-            row(title: action.title, symbol: ContextMenu.symbol(action.kind), detail: L.kindLabel(action.kind))
+        VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .medium))
+                .frame(width: 40, height: 28)
+                .background(Capsule().fill(.quaternary))
+            Text(title)
+                .font(.system(size: 11))
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(width: 88)
         }
+        .opacity(dimmed ? 0.35 : 1)
+        .contentShape(Rectangle())
+    }
+}
+
+/// メニューの1行。右クリックで出るメニューと同じ大きさと並び
+private struct PreviewRow: View {
+    let entry: MenuEntry
+    let insertionAbove: Bool
+    @State private var hovering = false
+
+    var body: some View {
+        Group {
+            switch entry.content {
+            case .separator:
+                // 線は 1pt しかないので、行の高さ全体を掴めるようにする。線だけだと掴めなかった
+                Rectangle()
+                    .fill(.separator)
+                    .frame(height: 1)
+                    .padding(.horizontal, 10)
+                    .frame(height: 11)
+                    .contentShape(Rectangle())
+            case .builtin(let item):
+                row(item.label, ContextMenu.symbol(item))
+            case .custom(let action):
+                row(action.title, ContextMenu.symbol(action.kind))
+            }
+        }
+        .overlay(alignment: .top) {
+            if insertionAbove { InsertionLine() }
+        }
+        .onHover { hovering = $0 }
     }
 
-    private func row(title: String, symbol: String, detail: String? = nil) -> some View {
-        Toggle(isOn: Binding(get: { !entry.hidden }, set: { entry.hidden = !$0 })) {
-            HStack(spacing: 8) {
-                Image(systemName: symbol).frame(width: 18)
-                Text(title)
-                if let detail {
-                    Text(detail).font(.caption).foregroundStyle(.secondary)
-                }
-            }
+    private func row(_ title: String, _ symbol: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .frame(width: 16)
+            Text(title)
+            Spacer(minLength: 0)
         }
-        .toggleStyle(.checkbox)
+        .font(.system(size: 13))
+        .foregroundStyle(hovering ? Color.white : Color.primary)
+        .padding(.horizontal, 10)
+        .frame(height: 24)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(hovering ? Color.accentColor : .clear)
+        )
+        .contentShape(Rectangle())
+    }
+}
+
+/// ドラッグ中に、どこへ入るかを示す線
+private struct InsertionLine: View {
+    var body: some View {
+        Capsule()
+            .fill(Color.accentColor)
+            .frame(height: 3)
+            .padding(.horizontal, 4)
+            .offset(y: -1.5)
     }
 }
 

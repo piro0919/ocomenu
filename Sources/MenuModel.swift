@@ -133,6 +133,18 @@ enum MenuLayout {
         return entries
     }
 
+    /// 初期状態に戻す。並びは既定に戻すが、自分で作った項目は消さずに隠して残す。
+    /// Finder の「デフォルトセット」がツールバーだけを戻し、部品は残すのと同じ
+    static func reset(_ entries: [MenuEntry]) -> [MenuEntry] {
+        let customs = entries.compactMap { entry -> MenuEntry? in
+            guard case .custom = entry.content else { return nil }
+            var kept = entry
+            kept.hidden = true
+            return kept
+        }
+        return defaults + customs
+    }
+
     /// 保存してある並びを直す。後の版で標準の項目が増えたら、隠した状態で末尾に足す。
     /// 並びを勝手に変えないため、出すのは利用者に任せる
     static func normalized(_ entries: [MenuEntry]) -> [MenuEntry] {
