@@ -19,7 +19,7 @@ final class Interceptor {
 
     var isRunning: Bool { tap != nil }
 
-    /// 自前のメニューを開いている間は真。キー入力をこちらへ回す
+    /// 自前のメニューを開いている間は真。外のクリックで閉じるのに使う
     var menuIsOpen = false
 
     /// タップを張る。アクセシビリティの許可が無ければ張れず false
@@ -27,7 +27,7 @@ final class Interceptor {
     func start() -> Bool {
         if tap != nil { return true }
         var mask: CGEventMask = 0
-        for type: CGEventType in [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .keyDown, .keyUp] {
+        for type: CGEventType in [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp] {
             mask |= CGEventMask(1) << type.rawValue
         }
         guard
@@ -49,6 +49,19 @@ final class Interceptor {
         return true
     }
 
+    /// その位置にあるのが自前のメニューか
+    private func isOwnElement(at point: CGPoint) -> Bool {
+        var hit: AXUIElement?
+        guard
+            AXUIElementCopyElementAtPosition(
+                AXUIElementCreateSystemWide(), Float(point.x), Float(point.y), &hit) == .success,
+            let hit
+        else { return false }
+        var pid: pid_t = 0
+        AXUIElementGetPid(hit, &pid)
+        return pid == getpid()
+    }
+
     /// 中身を書き換えることはあるが、止めるときだけ false を返す
     private func handle(_ type: CGEventType, _ event: CGEvent) -> Bool {
         let pass = true
@@ -56,15 +69,9 @@ final class Interceptor {
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             // 呼び戻しが遅れると OS に切られる。張り直す
+            log.error("event tap was disabled (\(type.rawValue)); re-enabling")
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return pass
-
-        case .keyDown, .keyUp:
-            // Ocomenu は前面のアプリではないので、キー入力は前面の Finder へ行き、
-            // 自前のメニューは Esc でも閉じない。開いている間だけ自分に送り直す
-            guard menuIsOpen else { return pass }
-            event.postToPid(getpid())
-            return false
 
         case .leftMouseUp, .rightMouseUp:
             guard let pending = converted else { return pass }
@@ -81,6 +88,12 @@ final class Interceptor {
             return pass
 
         case .leftMouseDown, .rightMouseDown:
+            // メニューを開いている間に外を押されたら閉じる。Finder の元のメニューと同じく、
+            // 普通のクリックは閉じるだけで下へは渡さない。右クリックなら閉じてから、そこで出し直す
+            if menuIsOpen, !isOwnElement(at: event.location) {
+                ContextMenu.shared.close()
+                guard type == .rightMouseDown || event.flags.contains(.maskControl) else { return false }
+            }
             guard type == .rightMouseDown || event.flags.contains(.maskControl) else { return pass }
             guard Settings.isEnabled, let element = FinderBridge.finderElement(at: event.location) else {
                 return pass

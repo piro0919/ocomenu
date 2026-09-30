@@ -11,6 +11,16 @@ final class ContextMenu: NSObject {
 
     /// メニューを出した窓。項目が選ばれたら、この窓を前に出してから押す
     private var window: AXUIElement?
+    /// 開いているメニュー。外をクリックされたら閉じる
+    private var openMenu: NSMenu?
+    /// 開いている間に項目が選ばれたか
+    private var chose = false
+
+    /// 開いているメニューを閉じる。Ocomenu は前面のアプリではないので、
+    /// 外をクリックされてもメニューは自分では閉じない
+    func close() {
+        openMenu?.cancelTracking()
+    }
 
     /// 画面の左上を原点とする位置（CGEvent の座標）に出す
     func show(at location: CGPoint, window: AXUIElement?) {
@@ -36,11 +46,39 @@ final class ContextMenu: NSObject {
         }
         guard !menu.items.isEmpty else { return }
 
+        popUp(menu, at: location, window: window)
+    }
+
+    /// メニューを出す足場。アプリを前面にしないまま、キー入力を受け取れる窓。
+    /// 前面でないアプリのメニューはキー入力を受けず、Esc でも閉じない。キーを自分に送り直しても無視され、
+    /// 前面化は Finder 上のクリックからでは断られた（2026-09-30 に実測）
+    private lazy var anchor: NSPanel = {
+        let panel = KeyablePanel(
+            contentRect: NSRect(x: 0, y: 0, width: 1, height: 1),
+            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.level = .popUpMenu
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        return panel
+    }()
+
+    private func popUp(_ menu: NSMenu, at location: CGPoint, window: AXUIElement?) {
         // AppKit の座標は左下が原点。一番目の画面の高さで裏返す
         let height = NSScreen.screens.first?.frame.height ?? 0
+        let point = NSPoint(x: location.x, y: height - location.y)
+        anchor.setFrameOrigin(point)
+        anchor.makeKeyAndOrderFront(nil)
+        defer { anchor.orderOut(nil) }
+        openMenu = menu
+        chose = false
         Interceptor.shared.menuIsOpen = true
-        menu.popUp(positioning: nil, at: NSPoint(x: location.x, y: height - location.y), in: nil)
+        log.info("showing the menu, \(menu.items.count) rows")
+        menu.popUp(positioning: nil, at: .zero, in: anchor.contentView)
+        log.info("menu closed, chose=\(self.chose)")
         Interceptor.shared.menuIsOpen = false
+        openMenu = nil
     }
 
     private func makeItem(title: String, symbol: String, entry: MenuEntry) -> NSMenuItem {
@@ -52,6 +90,7 @@ final class ContextMenu: NSObject {
     }
 
     @objc private func choose(_ sender: NSMenuItem) {
+        chose = true
         guard let id = sender.representedObject as? UUID,
             let entry = Settings.layout.first(where: { $0.id == id })
         else { return }
@@ -66,6 +105,7 @@ final class ContextMenu: NSObject {
                 }
             }
         case .custom(let action):
+            FinderBridge.bringToFront(window)
             let paths = FinderBridge.selection()
             log.info("custom item chosen, \(paths.count) selected")
             Actions.run(action, on: paths)
@@ -102,4 +142,9 @@ final class ContextMenu: NSObject {
         case .moveTo: return "folder"
         }
     }
+}
+
+/// 枠の無いパネルは既定ではキー入力を受け取る窓になれない
+private final class KeyablePanel: NSPanel {
+    override var canBecomeKey: Bool { true }
 }
