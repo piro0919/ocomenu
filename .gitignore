@@ -4,3 +4,10 @@ dist/
 .DS_Store
 Vendor/
 
+
+# ランディングページ
+node_modules/
+lp/.next/
+lp/tsconfig.tsbuildinfo
+lp/public/sitemap*.xml
+lp/public/robots.txt

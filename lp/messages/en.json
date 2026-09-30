@@ -1,0 +1,140 @@
+{
+  "meta": {
+    "title": "Ocomenu — remove Finder's built-in right-click items on your Mac",
+    "description": "Ocomenu replaces Finder's right-click menu with one you choose the items of. Hide Get Info, Rename, Compress, Quick Look and the other built-in items no setting can remove, reorder them, and add your own. Free and open source."
+  },
+  "header": {
+    "label": "Menu"
+  },
+  "hero": {
+    "kicker": "Today's menu",
+    "title": "Finder's right-click menu, written by you.",
+    "lead": "Apple's items in Finder's context menu can't be removed — not in Settings, not with any Finder extension. Ocomenu serves its own menu in their place, so every line is up to you.",
+    "download": "Download — free",
+    "brew": "or with Homebrew",
+    "requirement": "macOS 14 or later, Apple silicon"
+  },
+  "compare": {
+    "before": "Finder's menu",
+    "after": "Yours, with Ocomenu"
+  },
+  "courses": {
+    "title": "On the menu",
+    "items": [
+      {
+        "name": "Hide the built-in items",
+        "price": "Free",
+        "lines": [
+          "Get Info, Rename, Compress, Duplicate, Make Alias, Quick Look, Copy, Share…",
+          "The ones no setting and no Finder extension can take away",
+          "Items Finder would grey out for that file stay hidden, as in Finder"
+        ]
+      },
+      {
+        "name": "Arrange them your way",
+        "price": "Drag",
+        "lines": [
+          "A settings window modelled on Finder's own Customize Toolbar",
+          "Drag an item into the menu to add it, out of the menu to remove it",
+          "Separators as many as you like"
+        ]
+      },
+      {
+        "name": "Add your own",
+        "price": "Three kinds",
+        "lines": [
+          "Run a shell script — the selected paths arrive as \"$@\"",
+          "Open with an app of your choice",
+          "Copy or move to a folder, with \" 2\" added on a name clash, as Finder does"
+        ]
+      },
+      {
+        "name": "Finder's original, any time",
+        "price": "⌘ + right-click",
+        "lines": [
+          "Hold ⌘ while right-clicking and Finder's own menu comes back for that click",
+          "Quit Ocomenu and everything is as it was"
+        ]
+      },
+      {
+        "name": "Finder left untouched",
+        "price": "SIP stays on",
+        "lines": [
+          "Nothing is injected into Finder and nothing about Finder is changed",
+          "Ocomenu catches the right-click before Finder does and shows its own menu",
+          "Choosing a built-in item presses the same command in Finder's menu bar"
+        ]
+      }
+    ]
+  },
+  "setup": {
+    "title": "Before you order",
+    "steps": [
+      {
+        "title": "Install",
+        "body": "Download the DMG and drag Ocomenu into Applications, or use Homebrew."
+      },
+      {
+        "title": "Let it open",
+        "body": "The author is not a registered Apple developer, so the first launch is blocked. Open System Settings → Privacy & Security and click Open Anyway."
+      },
+      {
+        "title": "Allow Accessibility",
+        "body": "Ocomenu needs it to catch the right-click and to see what is under the pointer. Switch Ocomenu on in the list it opens."
+      },
+      {
+        "title": "Make it yours",
+        "body": "Open Ocomenu again, or click its menu bar icon, to arrange the menu. Right after installing it matches Finder's, so nothing disappears until you say so."
+      }
+    ],
+    "note": "Your own items ask for Automation access to Finder the first time they run, to learn which files are selected."
+  },
+  "price": {
+    "title": "The bill",
+    "amount": "Free",
+    "body": "Open source under the MIT license. No account, no analytics in the app, nothing sent anywhere.",
+    "cta": "Download — free"
+  },
+  "seal": "Ocomenu",
+  "footer": {
+    "source": "Source",
+    "releases": "Past updates",
+    "privacy": "Privacy"
+  },
+  "language": {
+    "ja": "日本語",
+    "en": "English"
+  },
+  "privacy": {
+    "title": "Privacy Policy",
+    "updated": "Last updated: September 30, 2026",
+    "intro": "Ocomenu shows its own menu when you right-click in Finder. It has no server, no analytics, and no account.",
+    "sections": [
+      {
+        "title": "What it reads",
+        "body": "When you right-click in Finder, Ocomenu reads which file or folder is under the pointer and whether it is selected, through macOS's Accessibility interface. It looks at clicks only while the pointer is over Finder, and it does not record them."
+      },
+      {
+        "title": "Your own items",
+        "body": "Items you add ask Finder which files are selected and hand those paths to the script, app or folder you chose. That happens on your Mac only."
+      },
+      {
+        "title": "Nothing leaves the Mac",
+        "body": "Your menu is saved in the app's preferences on your Mac. Nothing is collected or uploaded."
+      },
+      {
+        "title": "Update checks go to GitHub",
+        "body": "Once at launch, Ocomenu downloads a small file from GitHub to see whether a newer version exists. GitHub receives the request like any download; Ocomenu sends nothing else with it."
+      },
+      {
+        "title": "This website",
+        "body": "This page uses Vercel Web Analytics, which counts visits without cookies and without identifying you."
+      },
+      {
+        "title": "Questions",
+        "body": "Open an issue on the GitHub repository."
+      }
+    ],
+    "back": "Back to Ocomenu"
+  }
+}

@@ -37,6 +37,9 @@ open Ocomenu.app
 - `Vendor/` is not tracked. If it disappears, `build.sh` fetches it again
 - The version is passed in through `OCOMENU_VERSION`. Local builds stay at `0.0.0`
 - A new source file must also be added to the file list in `build.sh`
+- The landing page is a pnpm workspace under `lp/`, modelled on Wacchi's for the plumbing only;
+  its look is deliberately different (see SPEC.md). Use `pnpm lp:dev` and `pnpm lp:build`. CI runs
+  its lint, typecheck and build on Linux
 - Builds are signed with the local "Okigae Dev" certificate when it exists. An ad-hoc signature
   changes on every build and macOS drops the Accessibility permission each time. CI has no
   certificate and falls back to ad-hoc, which is fine there
