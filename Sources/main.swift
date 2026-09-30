@@ -116,6 +116,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         // 切っている間は絵を薄くして、効いていないことが見て分かるようにする
         statusItem.button?.appearsDisabled = !Settings.isEnabled
+        statusItem.isVisible = Settings.showsMenuBarIcon
+    }
+
+    /// もう一度開かれたら設定画面を出す。アイコンを隠しているときや、ノッチの裏に隠れて見えないときの入口
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return true
     }
 
     func menuWillOpen(_ menu: NSMenu) {

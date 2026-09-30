@@ -57,6 +57,10 @@ enum L {
     static var edit: String { t("編集…", "Edit…") }
     static var resetToDefaults: String { t("初期状態に戻す", "Reset to Defaults") }
     static var launchAtLogin: String { t("ログイン時に起動する", "Launch at login") }
+    static var showMenuBarIcon: String { t("メニューバーにアイコンを表示", "Show icon in menu bar") }
+    static var menuBarIconHint: String {
+        t("隠しても、Ocomenu をもう一度開くとこの画面が出ます。", "When hidden, open Ocomenu again to get back to this window.")
+    }
     static var language: String { t("言語", "Language") }
     static var checkForUpdates: String { t("更新を確認", "Check for updates") }
     static func launchToggleFailed(_ reason: String) -> String {

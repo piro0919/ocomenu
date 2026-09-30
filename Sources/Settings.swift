@@ -36,6 +36,19 @@ enum Settings {
         }
     }
 
+    // MARK: - メニューバーのアイコン
+
+    private static let showsIconKey = "showsMenuBarIcon"
+
+    /// 隠しても、アプリをもう一度開けば設定画面が出る。メニューバーが埋まっているとノッチの裏に隠れて見えないため
+    static var showsMenuBarIcon: Bool {
+        get { UserDefaults.standard.object(forKey: showsIconKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: showsIconKey)
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     // MARK: - メニューの並び
 
     /// 保存が無いか読めなければ既定の並び。読むたびに normalized を通し、後から増えた標準の項目を足す。

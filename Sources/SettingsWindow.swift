@@ -433,6 +433,7 @@ private struct CustomActionEditor: View {
 
 private struct GeneralView: View {
     @State private var launchAtLogin = Settings.launchesAtLogin
+    @State private var showsIcon = Settings.showsMenuBarIcon
     @State private var language = Settings.language
     @State private var message: String?
 
@@ -446,6 +447,11 @@ private struct GeneralView: View {
             if let message {
                 Text(message).font(.caption).foregroundStyle(.red)
             }
+            Toggle(isOn: $showsIcon) {
+                Text(L.showMenuBarIcon)
+                Text(L.menuBarIconHint)
+            }
+            .onChange(of: showsIcon) { _, new in Settings.showsMenuBarIcon = new }
             Picker(L.language, selection: $language) {
                 ForEach(Language.allCases, id: \.self) { Text($0.label).tag($0) }
             }
