@@ -195,26 +195,31 @@ private struct MenuLayoutView: View {
                             }
                         }
                 }
-                // 末尾へ入れるための受け皿。空行に見えないよう低くする
-                Rectangle()
-                    .fill(.clear)
-                    .frame(height: 10)
-                    .overlay(alignment: .top) {
-                        if dropAtEnd { InsertionLine() }
-                    }
-                    .contentShape(Rectangle())
-                    .dropDestination(for: String.self) { tokens, _ in
-                        for token in tokens { putIn(token, before: nil) }
-                        return true
-                    } isTargeted: {
-                        dropAtEnd = $0
-                    }
+                // 全部抜いても落とし先が残るよう、空のときだけ1行ぶんの場所を置く。
+                // frame(minHeight:) で済ませると、窓を中身に合わせる作りと噛み合わず枠が1行ぶんに縮んだ
+                if entries.allSatisfy(\.hidden) {
+                    Color.clear.frame(height: 24)
+                }
             }
             .padding(5)
             .frame(width: 240)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.separator))
+            .overlay(alignment: .bottom) {
+                if dropAtEnd { InsertionLine().padding(.bottom, 4) }
+            }
             .shadow(color: .black.opacity(0.25), radius: 12, y: 6)
+            // 行の無い所に落とせば末尾に入る。行の上なら行の方が受け取る。
+            // 以前は末尾に透明な受け皿の行を枠の中に置いていて、その高さのぶん下の余白が上より広かった。
+            // 枠の中の余白だけでは狙いにくいので、見た目の枠の外、下に透明な帯を足して落とし先を広げる
+            .padding(.bottom, 32)
+            .contentShape(Rectangle())
+            .dropDestination(for: String.self) { tokens, _ in
+                for token in tokens { putIn(token, before: nil) }
+                return true
+            } isTargeted: {
+                dropAtEnd = $0
+            }
         }
         // 左の部品の一覧は、ドロップ先の枠のぶん内側に余白がある。見出しの高さを揃える
         .padding(.top, 12)
