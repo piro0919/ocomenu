@@ -25,9 +25,38 @@ final class ContextMenu: NSObject {
     /// 画面の左上を原点とする位置（CGEvent の座標）に出す
     func show(at location: CGPoint, window: AXUIElement?) {
         self.window = window
+        pendingLocation = location
+        waitForFinder(until: Date().addingTimeInterval(0.5), waited: false)
+    }
+
+    /// メニューを出す位置。Finder が前面になるのを待つ間だけ持つ
+    private var pendingLocation: CGPoint?
+
+    /// Finder が前面になってから、使える項目を読んでメニューを組む。
+    /// 別のアプリを使っている最中に Finder の窓を右クリックすると、Finder が前面になりきる前に読むことになり、
+    /// 「ゴミ箱に入れる」「名称変更」のような窓に関わる項目が無効に見えて消えた（2026-09-30 に本人が踏んだ。2回目は出る）
+    private func waitForFinder(until deadline: Date, waited: Bool) {
+        if FinderBridge.finder?.isActive == true || Date() >= deadline {
+            // 前面になった直後は、メニューバーの有効・無効がまだ追いついていないことがある。待ったときだけ一拍おく
+            DispatchQueue.main.asyncAfter(deadline: .now() + (waited ? 0.05 : 0)) { [weak self] in
+                MainActor.assumeIsolated { self?.build() }
+            }
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.02) { [weak self] in
+            MainActor.assumeIsolated { self?.waitForFinder(until: deadline, waited: true) }
+        }
+    }
+
+    private func build() {
+        guard let location = pendingLocation else { return }
+        pendingLocation = nil
         let menu = NSMenu()
         menu.autoenablesItems = false
         let unavailable = FinderBridge.unavailableItems()
+        log.info(
+            "unavailable: \(unavailable.map(\.rawValue).sorted().joined(separator: ","), privacy: .public) finder active: \(FinderBridge.finder?.isActive == true)"
+        )
         let entries = Settings.layout.map { entry in
             guard case .builtin(let item) = entry.content, unavailable.contains(item) else { return entry }
             var hidden = entry
