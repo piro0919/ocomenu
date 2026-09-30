@@ -17,7 +17,13 @@ final class SettingsWindowController: NSWindowController {
         window.title = L.settingsTitle
         window.isReleasedWhenClosed = false
         window.contentMinSize = NSSize(width: 420, height: 420)
-        window.contentViewController = NSHostingController(rootView: SettingsView())
+        let hosting = NSHostingController(rootView: SettingsView())
+        // 既定では中身の理想の大きさに窓が合わせられ、一覧の行の数だけ縦に伸びる。
+        // 最小の大きさを中身から取らせても、一覧の全行の高さが最小として返ってきて同じだった。
+        // 大きさは窓の側で決める
+        hosting.sizingOptions = []
+        window.contentViewController = hosting
+        window.setContentSize(NSSize(width: 460, height: 560))
         self.init(window: window)
     }
 
