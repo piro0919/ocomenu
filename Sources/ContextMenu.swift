@@ -17,7 +17,14 @@ final class ContextMenu: NSObject {
         self.window = window
         let menu = NSMenu()
         menu.autoenablesItems = false
-        for entry in MenuLayout.visible(Settings.layout) {
+        let unavailable = FinderBridge.unavailableItems()
+        let entries = Settings.layout.map { entry in
+            guard case .builtin(let item) = entry.content, unavailable.contains(item) else { return entry }
+            var hidden = entry
+            hidden.hidden = true
+            return hidden
+        }
+        for entry in MenuLayout.visible(entries) {
             switch entry.content {
             case .separator:
                 menu.addItem(.separator())

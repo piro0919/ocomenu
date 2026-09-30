@@ -147,23 +147,35 @@ enum FinderBridge {
     /// Finder のメニューバーの項目を押す。押せなければ false
     @discardableResult
     static func press(_ item: BuiltinItem) -> Bool {
-        guard let finder else { return false }
-        let app = AXUIElementCreateApplication(finder.processIdentifier)
-        guard let bar = element(app, kAXMenuBarAttribute) else { return false }
-        let menus = children(bar)
-        guard
-            let menu = menus.first(where: { item.menuTitles.contains(string($0, kAXTitleAttribute) ?? "") })
-        else { return false }
-        let entries = children(menu).flatMap { string($0, kAXRoleAttribute) == kAXMenuRole ? children($0) : [$0] }
-
-        let enabled = entries.filter { bool($0, kAXEnabledAttribute) == true }
-        // 識別子で探す。無ければ名前で探す
-        let target =
-            enabled.first { string($0, "AXIdentifier").map(item.identifiers.contains) == true }
-            ?? MenuMatch.index(of: item.names, in: enabled.map { string($0, kAXTitleAttribute) ?? "" })
-            .map { enabled[$0] }
-        guard let target else { return false }
+        guard let target = menuItem(item, enabledOnly: true) else { return false }
         return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+    }
+
+    /// 今の選択で Finder のメニューバーの項目が使えないもの。自前のメニューからも外す。
+    /// ファイルに「新規タブで開く」が出ないのは Finder の右クリックと同じ。
+    /// メニューバーに見つからないものは入れない。押して鳴らすほうが、黙って消えるより分かる
+    static func unavailableItems() -> Set<BuiltinItem> {
+        Set(
+            BuiltinItem.allCases.filter { item in
+                guard let found = menuItem(item, enabledOnly: false) else { return false }
+                // 圧縮のように識別子を2つ持つものは、有効なほうがあれば使える
+                return bool(found, kAXEnabledAttribute) != true && menuItem(item, enabledOnly: true) == nil
+            })
+    }
+
+    /// メニューバーから項目を探す。識別子で探し、無ければ名前で探す
+    private static func menuItem(_ item: BuiltinItem, enabledOnly: Bool) -> AXUIElement? {
+        guard let finder else { return nil }
+        let app = AXUIElementCreateApplication(finder.processIdentifier)
+        guard let bar = element(app, kAXMenuBarAttribute),
+            let menu = children(bar).first(where: { item.menuTitles.contains(string($0, kAXTitleAttribute) ?? "") })
+        else { return nil }
+        let entries = children(menu)
+            .flatMap { string($0, kAXRoleAttribute) == kAXMenuRole ? children($0) : [$0] }
+            .filter { !enabledOnly || bool($0, kAXEnabledAttribute) == true }
+        return entries.first { string($0, "AXIdentifier").map(item.identifiers.contains) == true }
+            ?? MenuMatch.index(of: item.names, in: entries.map { string($0, kAXTitleAttribute) ?? "" })
+            .map { entries[$0] }
     }
 
     /// その窓を前に出し、Finder を前面にする。メニューバーの項目は前面の窓に対して働くため
