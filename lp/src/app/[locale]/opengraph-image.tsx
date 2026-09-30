@@ -40,7 +40,11 @@ export default async function OgImage({
         alignItems: "center",
         background: INK,
         display: "flex",
-        gap: 60,
+        /* kk-web の一覧は 176×99 に縮めて左右を切る。1200×630 との比の差で、左右が3%ずつ欠ける。
+           日本語の副題の末尾が欠けたので、中身を中央に寄せて左右に余白を取る */
+        gap: 48,
+        paddingLeft: 90,
+        paddingRight: 90,
         height: "100%",
         justifyContent: "center",
         width: "100%",
@@ -48,11 +52,11 @@ export default async function OgImage({
     >
       <div style={{ borderRadius: 60, display: "flex", overflow: "hidden" }}>
         {/* biome-ignore lint/performance/noImgElement: next/image is not available in ImageResponse */}
-        <img alt="" height={270} src={iconSrc} width={270} />
+        <img alt="" height={240} src={iconSrc} width={240} />
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ color: PAPER, fontSize: 132, lineHeight: 1 }}>Ocomenu</div>
-        <div style={{ color: PAPER, display: "flex", fontSize: 40, marginTop: 24, opacity: 0.85 }}>
+        <div style={{ color: PAPER, display: "flex", fontSize: 34, marginTop: 22, opacity: 0.85 }}>
           {isJa ? "Finder の右クリックを、自分のお品書きに" : "Finder's right-click menu, your way"}
         </div>
       </div>
