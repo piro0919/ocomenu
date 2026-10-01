@@ -140,6 +140,18 @@ enum SelfTest {
             check(MenuMatch.find(.compress, in: english) == 1, "名前で探すときも完全一致を先にする")
         }
 
+        // スクリプトの終わり方
+        do {
+            check(ScriptOutcome(status: 0, reason: .exit) == .success, "終了コード 0 はうまく終わった")
+            check(ScriptOutcome(status: 3, reason: .exit) == .exited(3), "0 以外の終了コードは失敗")
+            check(ScriptOutcome(status: 15, reason: .uncaughtSignal) == .signaled(15), "シグナルで止められたのも失敗")
+            check(ScriptOutcome.success.message(stderr: "warning") == nil, "うまく終わったなら知らせない")
+            check(ScriptOutcome.excerpt("  boom\n") == "boom", "標準エラーの前後の空白は落とす")
+            let long = String(repeating: "x", count: 1000) + "END"
+            let excerpt = ScriptOutcome.excerpt(long)
+            check(excerpt.count == 601 && excerpt.hasPrefix("…") && excerpt.hasSuffix("END"), "長い標準エラーは末尾だけ見せる")
+        }
+
         // 行き先で名前がぶつかったとき
         do {
             let taken: Set<String> = ["a.txt", "a 2.txt", "folder"]

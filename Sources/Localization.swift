@@ -106,4 +106,10 @@ enum L {
     static func actionFailed(_ title: String) -> String {
         t("“\(title)”を実行できませんでした", "Couldn’t run “\(title)”")
     }
+    static func scriptExited(_ code: Int32) -> String {
+        t("スクリプトが終了コード\(code)で終了しました。", "The script exited with code \(code).")
+    }
+    static func scriptSignaled(_ signal: Int32) -> String {
+        t("スクリプトがシグナル\(signal)で停止しました。", "The script was stopped by signal \(signal).")
+    }
 }
