@@ -11,7 +11,7 @@ enum BuiltinItem: String, CaseIterable, Codable, Sendable {
     case quickLook, copy, copyPath, share
 
     /// メニューバーの項目の識別子。言語に依らない。
-    /// nib の中の番号なので、macOS の版が変わると変わりうる。そのときは names で探し直す
+    /// nib の中の番号なので、macOS の版が変わると変わりうる。そのときは shortcuts、それでも無ければ names で探し直す
     var identifiers: [String] {
         switch self {
         case .open: return ["_NS:728"]
@@ -30,7 +30,26 @@ enum BuiltinItem: String, CaseIterable, Codable, Sendable {
         }
     }
 
-    /// 識別子で見つからなかったときに探す項目名。まず完全一致で探し、無ければ前方か後方の一致で探す。
+    /// 識別子で見つからなかったときに探すキーボードショートカット。言語に依らない。
+    /// 新規タブで開く・名称変更・圧縮・共有…には Finder がショートカットを付けていないので、names に頼るしかない
+    var shortcuts: [MenuShortcut] {
+        switch self {
+        case .open: return [MenuShortcut(.char("O"))]
+        // ⌘⌫ は文字で来るか記号で来るかを実機で確かめられていないので、どちらでも当てる
+        case .moveToTrash:
+            return [MenuShortcut(.char("\u{8}")), MenuShortcut(.char("\u{7F}")), MenuShortcut(.glyph(23))]
+        case .getInfo: return [MenuShortcut(.char("I"))]
+        case .duplicate: return [MenuShortcut(.char("D"))]
+        case .makeAlias: return [MenuShortcut(.char("A"), modifiers: MenuShortcut.control)]
+        case .quickLook: return [MenuShortcut(.char("Y"))]
+        case .copy: return [MenuShortcut(.char("C"))]
+        case .copyPath: return [MenuShortcut(.char("C"), modifiers: MenuShortcut.option)]
+        case .openInNewTab, .rename, .compress, .share: return []
+        }
+    }
+
+    /// 識別子でもショートカットでも見つからなかったときに探す項目名。日本語と英語しか持たない。
+    /// まず完全一致で探し、無ければ前方か後方の一致で探す。
     /// 「“名前”を圧縮」「Compress “名前”」のように名前が入るものを拾うため。
     /// 完全一致を先にするのは、「コピー」が「“名前”のパス名をコピー」の後方に一致してしまうため
     var names: [String] {
@@ -47,14 +66,6 @@ enum BuiltinItem: String, CaseIterable, Codable, Sendable {
         case .copy: return ["コピー", "Copy"]
         case .copyPath: return ["のパス名をコピー", "as Pathname"]
         case .share: return ["共有…", "Share…"]
-        }
-    }
-
-    /// どのメニューの下にあるか。日本語と英語の見出し
-    var menuTitles: [String] {
-        switch self {
-        case .copy, .copyPath: return ["編集", "Edit"]
-        default: return ["ファイル", "File"]
         }
     }
 
@@ -192,13 +203,91 @@ enum UniqueName {
     }
 }
 
-/// 名前でメニュー項目を探すときの当て方。完全一致を先に、無ければ前方か後方の一致
+/// メニューバーの項目のキーボードショートカット。AX の AXMenuItemCmdChar / AXMenuItemCmdGlyph / AXMenuItemCmdModifiers に当たる
+struct MenuShortcut: Equatable, Sendable {
+    enum Key: Equatable, Sendable {
+        /// 文字のキー。大文字で持つ。shift の有無は modifiers で表す
+        case char(String)
+        /// ⌫ のように文字を持たないキーの記号の番号
+        case glyph(Int)
+    }
+
+    // AXMenuItemCmdModifiers のビット。何も立っていなければ ⌘ だけ
+    static let shift = 1 << 0
+    static let option = 1 << 1
+    static let control = 1 << 2
+    static let noCommand = 1 << 3
+
+    var key: Key
+    var modifiers: Int
+
+    init(_ key: Key, modifiers: Int = 0) {
+        self.key = key
+        self.modifiers = modifiers
+    }
+}
+
+/// メニューバーの1項目を AX から読んだもの。どのメニューの下にあるかは持たない
+struct MenuBarEntry: Equatable, Sendable {
+    var identifier: String?
+    var title: String
+    var cmdChar: String?
+    var cmdGlyph: Int?
+    var cmdModifiers: Int
+    var enabled: Bool
+
+    init(
+        identifier: String? = nil, title: String = "", cmdChar: String? = nil, cmdGlyph: Int? = nil,
+        cmdModifiers: Int = 0, enabled: Bool = true
+    ) {
+        self.identifier = identifier
+        self.title = title
+        self.cmdChar = cmdChar
+        self.cmdGlyph = cmdGlyph
+        self.cmdModifiers = cmdModifiers
+        self.enabled = enabled
+    }
+
+    func matches(_ shortcut: MenuShortcut) -> Bool {
+        guard shortcut.modifiers == cmdModifiers else { return false }
+        switch shortcut.key {
+        case .char(let char):
+            guard let cmdChar, !cmdChar.isEmpty else { return false }
+            return cmdChar.uppercased() == char
+        case .glyph(let glyph):
+            return cmdGlyph == glyph
+        }
+    }
+}
+
+/// メニューバーから標準の項目を探すときの当て方
 enum MenuMatch {
+    /// メニューバー全体の項目から探す。親のメニューの名前は見ない。言語によって変わるため。
+    /// 識別子、ショートカット、項目名の順に当て、先に当たった手掛かりで決める。
+    /// 同じ手掛かりで2つ以上当たれば有効なほうを返す（圧縮は識別子を2つ持ち、選択によってどちらかが有効になる）
+    static func find(_ item: BuiltinItem, in entries: [MenuBarEntry]) -> Int? {
+        let byIdentifier = entries.indices.filter { entries[$0].identifier.map(item.identifiers.contains) == true }
+        if let found = preferEnabled(byIdentifier, in: entries) { return found }
+        let byShortcut = entries.indices.filter { index in item.shortcuts.contains { entries[index].matches($0) } }
+        if let found = preferEnabled(byShortcut, in: entries) { return found }
+        let exact = entries.indices.filter { item.names.contains(entries[$0].title) }
+        if let found = preferEnabled(exact, in: entries) { return found }
+        let partial = entries.indices.filter { fuzzy(item.names, entries[$0].title) }
+        return preferEnabled(partial, in: entries)
+    }
+
+    private static func preferEnabled(_ indices: [Int], in entries: [MenuBarEntry]) -> Int? {
+        indices.first { entries[$0].enabled } ?? indices.first
+    }
+
+    /// 名前で探すときの当て方。完全一致を先に、無ければ前方か後方の一致
     static func index(of names: [String], in titles: [String]) -> Int? {
         if let exact = titles.firstIndex(where: { names.contains($0) }) { return exact }
-        return titles.firstIndex { title in
-            names.contains { title.hasPrefix($0) || title.hasSuffix($0) }
-        }
+        return titles.firstIndex { fuzzy(names, $0) }
+    }
+
+    private static func fuzzy(_ names: [String], _ title: String) -> Bool {
+        names.contains { title.hasPrefix($0) || title.hasSuffix($0) }
     }
 }
 

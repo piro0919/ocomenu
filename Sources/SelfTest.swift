@@ -110,6 +110,36 @@ enum SelfTest {
             check(MenuMatch.index(of: BuiltinItem.getInfo.names, in: titles) == nil, "無ければ nil")
         }
 
+        // メニューバー全体から言語に依らずに探す
+        do {
+            // 「ファイル」でも「編集」でもない言語の Finder。親のメニューの名前には頼らない
+            let entries = [
+                MenuBarEntry(identifier: "_NS:999", title: "Öffnen", cmdChar: "O"),
+                MenuBarEntry(identifier: "_NS:715", title: "Informationen", cmdChar: "I"),
+                MenuBarEntry(identifier: "_NS:938", title: "„a“ komprimieren", enabled: false),
+                MenuBarEntry(identifier: "_NS:586", title: "Komprimieren"),
+                MenuBarEntry(identifier: "_NS:1", title: "Kopieren", cmdChar: "c"),
+                MenuBarEntry(title: "Als Pfadname kopieren", cmdChar: "C", cmdModifiers: MenuShortcut.option),
+                MenuBarEntry(title: "In den Papierkorb", cmdGlyph: 23),
+                MenuBarEntry(title: "Teilen …", enabled: false),
+            ]
+            check(MenuMatch.find(.getInfo, in: entries) == 1, "識別子で当てる")
+            check(MenuMatch.find(.open, in: entries) == 0, "識別子が変わっていてもショートカットで当てる")
+            check(MenuMatch.find(.compress, in: entries) == 3, "識別子が2つ当たれば有効なほう")
+            check(MenuMatch.find(.copy, in: entries) == 4, "ショートカットの文字は大文字小文字を問わない")
+            check(MenuMatch.find(.copyPath, in: entries) == 5, "修飾キーまで見て当てる（⌘C と ⌥⌘C を分ける）")
+            check(MenuMatch.find(.moveToTrash, in: entries) == 6, "⌫ は記号で来ても当てる")
+            check(MenuMatch.find(.share, in: entries) == nil, "手掛かりが何も合わなければ nil")
+            check(
+                MenuMatch.find(.duplicate, in: [MenuBarEntry(title: "Duplizieren", cmdChar: "D", cmdModifiers: 1)])
+                    == nil,
+                "修飾キーが違えば当てない")
+            let english = [
+                MenuBarEntry(title: "Compress “a”", enabled: false), MenuBarEntry(title: "Compress"),
+            ]
+            check(MenuMatch.find(.compress, in: english) == 1, "名前で探すときも完全一致を先にする")
+        }
+
         // 行き先で名前がぶつかったとき
         do {
             let taken: Set<String> = ["a.txt", "a 2.txt", "folder"]

@@ -154,35 +154,60 @@ enum FinderBridge {
     /// Finder のメニューバーの項目を押す。押せなければ false
     @discardableResult
     static func press(_ item: BuiltinItem) -> Bool {
-        guard let target = menuItem(item, enabledOnly: true) else { return false }
-        return AXUIElementPerformAction(target, kAXPressAction as CFString) == .success
+        let items = menuBarItems()
+        guard let index = MenuMatch.find(item, in: items.map(\.entry)), items[index].entry.enabled else { return false }
+        return AXUIElementPerformAction(items[index].element, kAXPressAction as CFString) == .success
     }
 
     /// 今の選択で Finder のメニューバーの項目が使えないもの。自前のメニューからも外す。
     /// ファイルに「新規タブで開く」が出ないのは Finder の右クリックと同じ。
     /// メニューバーに見つからないものは入れない。押して鳴らすほうが、黙って消えるより分かる
     static func unavailableItems() -> Set<BuiltinItem> {
-        Set(
+        let entries = menuBarItems().map(\.entry)
+        return Set(
             BuiltinItem.allCases.filter { item in
-                guard let found = menuItem(item, enabledOnly: false) else { return false }
-                // 圧縮のように識別子を2つ持つものは、有効なほうがあれば使える
-                return bool(found, kAXEnabledAttribute) != true && menuItem(item, enabledOnly: true) == nil
+                guard let index = MenuMatch.find(item, in: entries) else { return false }
+                return !entries[index].enabled
             })
     }
 
-    /// メニューバーから項目を探す。識別子で探し、無ければ名前で探す
-    private static func menuItem(_ item: BuiltinItem, enabledOnly: Bool) -> AXUIElement? {
-        guard let finder else { return nil }
+    /// AX から一度に読む属性。順番は menuBarItems の読み出しと揃える
+    private static let menuItemAttributes =
+        [
+            "AXIdentifier", kAXTitleAttribute, kAXMenuItemCmdCharAttribute, kAXMenuItemCmdGlyphAttribute,
+            kAXMenuItemCmdModifiersAttribute, kAXEnabledAttribute,
+        ] as CFArray
+
+    /// メニューバーの全部のメニューの項目を、並び順に読む。
+    /// 親のメニューは名前で選ばない。「ファイル」「File」は言語で変わり、他の言語の Finder で見つからなくなるため。
+    /// 先頭のアップルメニューはシステムのもので Finder の項目は無いので飛ばす
+    private static func menuBarItems() -> [(element: AXUIElement, entry: MenuBarEntry)] {
+        guard let finder else { return [] }
         let app = AXUIElementCreateApplication(finder.processIdentifier)
-        guard let bar = element(app, kAXMenuBarAttribute),
-            let menu = children(bar).first(where: { item.menuTitles.contains(string($0, kAXTitleAttribute) ?? "") })
-        else { return nil }
-        let entries = children(menu)
+        guard let bar = element(app, kAXMenuBarAttribute) else { return [] }
+        return children(bar).dropFirst()
+            .flatMap { children($0) }
             .flatMap { string($0, kAXRoleAttribute) == kAXMenuRole ? children($0) : [$0] }
-            .filter { !enabledOnly || bool($0, kAXEnabledAttribute) == true }
-        return entries.first { string($0, "AXIdentifier").map(item.identifiers.contains) == true }
-            ?? MenuMatch.index(of: item.names, in: entries.map { string($0, kAXTitleAttribute) ?? "" })
-            .map { entries[$0] }
+            .map { item in
+                // 1項目ずつ6回尋ねると遅いので、まとめて読む。無い属性はエラーの値で返り、下の型変換で落ちる
+                var raw: CFArray?
+                AXUIElementCopyMultipleAttributeValues(item, menuItemAttributes, [], &raw)
+                let values = (raw as? [AnyObject]) ?? []
+                func at(_ i: Int) -> AnyObject? { i < values.count ? values[i] : nil }
+                let char = at(2) as? String
+                let glyph = at(3) as? Int
+                return (
+                    item,
+                    MenuBarEntry(
+                        identifier: at(0) as? String,
+                        title: (at(1) as? String) ?? "",
+                        cmdChar: char?.isEmpty == false ? char : nil,
+                        cmdGlyph: glyph == 0 ? nil : glyph,
+                        cmdModifiers: (at(4) as? Int) ?? 0,
+                        enabled: (at(5) as? Bool) == true
+                    )
+                )
+            }
     }
 
     /// その窓を前に出し、Finder を前面にする。メニューバーの項目は前面の窓に対して働くため
