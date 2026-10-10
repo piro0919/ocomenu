@@ -1,7 +1,7 @@
 {
   "name": "ocomenu",
   "private": true,
-  "packageManager": "pnpm@11.28.5",
+  "packageManager": "pnpm@12.10.1",
   "scripts": {
     "lp:dev": "pnpm --filter ocomenu-lp dev",
     "lp:build": "pnpm --filter ocomenu-lp build"
